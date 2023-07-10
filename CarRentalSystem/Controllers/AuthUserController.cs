@@ -30,14 +30,14 @@ namespace CarRentalSystem.Controllers
         {
             if (_dbContext.AuthUsers.Where(u => u.Email == user.Email).FirstOrDefault() != null)
             {
-                return Ok();
+                return Ok("already present");
             }
            user.UserId = Guid.NewGuid();
             user.MemberSince = DateTime.Now;
             user.Role = "user";
             await _dbContext.AuthUsers.AddAsync(user);
             await _dbContext.SaveChangesAsync();
-            return Ok(user);
+            return Ok("register success");
         }
         
         [HttpPost("login")]
