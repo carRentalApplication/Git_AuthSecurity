@@ -11,6 +11,7 @@ namespace CarRentalSystem.Controllers
     [ApiController]
     public class AuthUserController : ControllerBase
     {
+        private const string role = "admin";
 
         private readonly CarRentalDbContext _dbContext;
 
@@ -61,10 +62,10 @@ namespace CarRentalSystem.Controllers
                 return Task.FromResult<IActionResult>(Ok(finalToken));
                }
             return Task.FromResult<IActionResult>(Ok("Failed to LoginIn"));
-
             }
 
             [HttpGet]
+        [Authorize(Roles = role)]
         public async Task<IActionResult> GetAllUser()
         {
             var user = await _dbContext.AuthUsers.ToListAsync();
@@ -96,6 +97,33 @@ namespace CarRentalSystem.Controllers
             await _dbContext.SaveChangesAsync();
 
             return Ok("Password changed successfully");
+        }
+
+        [HttpPut("updatestatus")]
+        [AllowAnonymous]
+        public async Task<IActionResult> UpdateStatus([FromBody] UpdateAuthStatus data)
+        {
+            var user = await _dbContext.AuthUsers.FirstOrDefaultAsync(u => u.UserId == data.Id);
+
+            if (user == null)
+            {
+                return Ok("Not Found");
+            }
+
+            if (data.Status == "true")
+            {
+                user.Role = "admin";
+            await _dbContext.SaveChangesAsync();
+                return Ok("Admin updated successfully");
+            }
+            else if(data.Status == "false")
+            {
+                user.Role = "user";
+                await _dbContext.SaveChangesAsync();
+                return Ok("User updated successfully");
+            }
+
+            return Ok("User updated successfully");
         }
 
     }
