@@ -1,9 +1,15 @@
 ﻿using CarRentalDatabase.DatabaseContext;
 using CarRentalEntities;
+using CarRentalSystem.Helper;
 using CarRentalSystem.Security;
+using CarRentalSystem.UtilityServices;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CarRentalSystem.Controllers
 {
@@ -11,17 +17,19 @@ namespace CarRentalSystem.Controllers
     [ApiController]
     public class AuthUserController : ControllerBase
     {
-        private const string role = "admin";
 
         private readonly CarRentalDbContext _dbContext;
 
+
         public readonly IConfiguration _configuration;
+        private readonly IEmailService _emailService;
 
         public AuthUserController(
-            CarRentalDbContext dbContext,IConfiguration configuration)
+            CarRentalDbContext dbContext, IConfiguration configuration, IEmailService emailService)
         {
-            this._dbContext=dbContext;
+            this._dbContext = dbContext;
             this._configuration = configuration;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
@@ -33,14 +41,16 @@ namespace CarRentalSystem.Controllers
             {
                 return Ok("already present");
             }
-           user.UserId = Guid.NewGuid();
+            user.UserId = Guid.NewGuid();
             user.MemberSince = DateTime.Now;
             user.Role = "user";
+            user.ResetpasswordToken = "ResetpasswordTokenValue";
+            user.ResetpasswordExpiry = DateTime.Now;
             await _dbContext.AuthUsers.AddAsync(user);
             await _dbContext.SaveChangesAsync();
             return Ok("register success");
         }
-        
+
         [HttpPost("login")]
         [AllowAnonymous]
         public Task<IActionResult> LoginUser([FromBody] Login user)
@@ -60,12 +70,12 @@ namespace CarRentalSystem.Controllers
                     isValidUser.Role
                     );
                 return Task.FromResult<IActionResult>(Ok(finalToken));
-               }
-            return Task.FromResult<IActionResult>(Ok("Failed to LoginIn"));
             }
+            return Task.FromResult<IActionResult>(Ok("Failed to LoginIn"));
 
-            [HttpGet]
-        [Authorize(Roles = role)]
+        }
+
+        [HttpGet]
         public async Task<IActionResult> GetAllUser()
         {
             var user = await _dbContext.AuthUsers.ToListAsync();
@@ -98,7 +108,6 @@ namespace CarRentalSystem.Controllers
 
             return Ok("Password changed successfully");
         }
-
         [HttpPut("updatestatus")]
         [AllowAnonymous]
         public async Task<IActionResult> UpdateStatus([FromBody] UpdateAuthStatus data)
@@ -113,10 +122,10 @@ namespace CarRentalSystem.Controllers
             if (data.Status == "true")
             {
                 user.Role = "admin";
-            await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync();
                 return Ok("Admin updated successfully");
             }
-            else if(data.Status == "false")
+            else if (data.Status == "false")
             {
                 user.Role = "user";
                 await _dbContext.SaveChangesAsync();
@@ -124,6 +133,81 @@ namespace CarRentalSystem.Controllers
             }
 
             return Ok("User updated successfully");
+        }
+
+        [HttpPost("send-reset-email/{email}")]
+        public async Task<IActionResult> SendEmail(string email)
+        {
+            var user = await _dbContext.AuthUsers.FirstOrDefaultAsync(a => a.Email == email);
+            if (user is null)
+            {
+                return NotFound(new
+                {
+                    StatusCode = 404,
+                    Message = "email Doesnt exist"
+
+                });
+
+            }
+            var tokenBytes = RandomNumberGenerator.GetBytes(64);
+            var emailToken = Convert.ToBase64String(tokenBytes);
+            user.ResetpasswordToken = emailToken;
+            user.ResetpasswordExpiry = DateTime.Now.AddMinutes(15);
+            string from = _configuration["EmailSettings:From"];
+            var emailModel = new EmailModel(email, "Reset Password!!", EmailBody.EmailStringBody(email, emailToken));
+            _emailService.SendEmail(emailModel);
+            _dbContext.Entry(user).State = EntityState.Modified;
+            await _dbContext.SaveChangesAsync();
+            return Ok(new
+            {
+                StatusCode = 200,
+                Message = "email sent"
+
+            });
+        }
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPassword resetpassword)
+        {
+            var newToken = resetpassword.EmailToken.Replace(" ", "+");
+            var user = await _dbContext.AuthUsers.AsNoTracking().FirstOrDefaultAsync(a => a.Email == resetpassword.Email);
+            if (user is null)
+            {
+                return NotFound(new
+                {
+                    StatusCode = 404,
+                    Message = "email doesn not exist"
+                });
+
+            }
+            var tokenCode = user.ResetpasswordToken;
+            DateTime emailTokenExpiry = user.ResetpasswordExpiry;
+            if (tokenCode != resetpassword.EmailToken || emailTokenExpiry < DateTime.Now)
+            {
+                return BadRequest(new
+                {
+                    StatusCode = 400,
+                    Message = "Invalid reset link"
+                });
+            }
+            //user.Password = PasswordHasher(resetpassword.NewPassword);
+            user.Password = resetpassword.NewPassword;
+            _dbContext.Entry(user).State = EntityState.Modified;
+            await _dbContext.SaveChangesAsync();
+            return Ok(new
+            {
+                StatusCode = 200,
+                Message = "password reset successfully"
+            });
+
+        }
+        private string PasswordHasher(string password)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                var hashedPassword = BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+                return hashedPassword;
+            }
         }
 
     }

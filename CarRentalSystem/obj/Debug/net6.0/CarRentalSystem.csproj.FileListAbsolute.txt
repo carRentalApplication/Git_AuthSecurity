@@ -282,3 +282,7 @@ C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalS
 C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalSystem\obj\Debug\net6.0\CarRentalSystem.pdb
 C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalSystem\obj\Debug\net6.0\CarRentalSystem.genruntimeconfig.cache
 C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalSystem\obj\Debug\net6.0\ref\CarRentalSystem.dll
+C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalSystem\bin\Debug\net6.0\MailKit.dll
+C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalSystem\bin\Debug\net6.0\MimeKit.dll
+C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalSystem\bin\Debug\net6.0\NETCore.MailKit.dll
+C:\Users\Admin\Desktop\Git_NewRepository(Car Rental)\Git_AuthSecurity\CarRentalSystem\bin\Debug\net6.0\BouncyCastle.Crypto.dll

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using CarRentalDatabase.DatabaseContext;
+using CarRentalSystem.UtilityServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,8 @@ builder.Services.AddDbContext<CarRentalDbContext>
     (option =>
         option.UseSqlServer(builder.Configuration.GetConnectionString("MyConnectionString")
     ));
+
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 var app = builder.Build();
 
